@@ -1,0 +1,28 @@
+docker run --hostname=fe59ded71111 --env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin --env=NGINX_VERSION=1.24.0 --env=PKG_RELEASE=1 --volume=C:\Users\dmusa\nginx\config\nginx.conf:/etc/nginx/nginx.conf --volume=C:\Users\dmusa\Downloads\media:/mnt/media:ro --network=bridge -p 8088:80 --restart=always --runtime=runc -d nginx:alpine-slim
+
+docker run --hostname=fe59ded7fd1a --env=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin --env=NGINX_VERSION=1.24.0 --env=PKG_RELEASE=1 --volume=C:\Users\dmusa\Downloads:/usr/share/nginx/html:ro --network=bridge -p 8088:80 --restart=always --label='maintainer=NGINX Docker Maintainers <docker-maint@nginx.com>' --runtime=runc -d nginx:stable-alpine-slim
+
+
+
+
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    server {
+        listen       80;
+        server_name  localhost;
+
+        location / {
+            root   /mnt/media;
+            autoindex on;
+            autoindex_exact_size off;
+            autoindex_localtime on;
+        }
+    }
+}
