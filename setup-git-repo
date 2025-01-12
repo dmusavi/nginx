@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Directory setup
+REPO_DIR="/path/to/your/directory"
+GIT_REPO_URL="https://github.com/your-username/your-repo-name.git"
+
+# Create the directory if it doesn't exist
+if [ ! -d "$REPO_DIR" ]; then
+  mkdir -p "$REPO_DIR"
+  echo "Directory $REPO_DIR created."
+else
+  echo "Directory $REPO_DIR already exists."
+fi
+
+# Navigate to the directory
+cd "$REPO_DIR"
+
+# Initialize git
+if [ ! -d ".git" ]; then
+  git init
+  echo "Initialized empty Git repository in $REPO_DIR."
+else
+  echo "Git repository already initialized in $REPO_DIR."
+fi
+
+# Add remote repository
+git remote add origin $GIT_REPO_URL
+echo "Remote repository added."
+
+# Pull from the remote repository
+git pull origin master
+echo "Repository pulled from remote."
+
+echo "Setup completed."
