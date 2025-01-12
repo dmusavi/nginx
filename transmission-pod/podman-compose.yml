@@ -1,17 +1,25 @@
-version: '3.7'
+version: "3.7"
 
 services:
   transmission:
-    image: transmission:latest  # Use built image with Podman
+    build: 
+      context: .
+      dockerfile: Dockerfile
     container_name: transmission
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=Etc/UTC
+      - TRANSMISSION_WEB_HOME= #optional
+      - USER= #optional
+      - PASS= #optional
+      - WHITELIST= #optional
+      - PEERPORT= #optional
+      - HOST_WHITELIST= #optional
     volumes:
-      - /media/config/transmission:/etc/transmission-daemon
-      - /media/downloads:/var/lib/transmission-daemon/downloads
-      - /media/watch:/var/lib/transmission-daemon/watch
+      - /home/d/media/config/transmission:/etc/transmission-daemon
+      - /home/d/media/downloads:/var/lib/transmission-daemon/downloads
+      - /home/d/media/watch:/var/lib/transmission-daemon/watch
     ports:
       - 9091:9091
       - 51413:51413
