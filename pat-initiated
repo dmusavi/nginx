@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Directory setup
+REPO_DIR="/path/to/your/directory"
+GIT_REPO_URL="https://github.com/your-username/your-repo-name.git"
+PAT="your-personal-access-token"
+
+# Create the directory if it doesn't exist
+if [ ! -d "$REPO_DIR" ]; then
+  mkdir -p "$REPO_DIR"
+  echo "Directory $REPO_DIR created."
+else
+  echo "Directory $REPO_DIR already exists."
+fi
+
+# Navigate to the directory
+cd "$REPO_DIR"
+
+# Initialize git
+if [ ! -d ".git" ]; then
+  git init
+  echo "Initialized empty Git repository in $REPO_DIR."
+else
+  echo "Git repository already initialized in $REPO_DIR."
+fi
+
+# Configure Git to use PAT for authentication
+git config --global credential.helper store
+echo "https://your-username:$PAT@github.com" > ~/.git-credentials
+
+# Add remote repository
+git remote add origin $GIT_REPO_URL
+echo "Remote repository added."
+
+# Pull from the remote repository
+git pull origin master
+echo "Repository pulled from remote."
+
+echo "Setup completed."
+
+# Script Breakdown
+# - Store PAT in Git Credentials:
+#   - Configures Git to use the credential helper to store your PAT.
+#   - Writes the PAT to the `.git-credentials` file so that it can be used for authentication.
+#
+# Replace `your-personal-access-token` with your actual PAT and `your-username/your-repo-name.git` with your actual repository URL.
+# This script will set up the directory, configure the remote repository with your PAT, and pull from the remote repository.
