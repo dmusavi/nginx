@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Variables
+URL="https://github.com/lsof-org/lsof/releases/download/4.99.0/lsof-4.99.0.tar.gz"
+VERSION="4.99.0"
+MD5SUM="8c858675f6d6e137df9b4e26ad6c46e8"
+
+# Download the package
+curl -L -O $URL
+
+# Verify the download by checking the MD5 sum
+echo "$MD5SUM lsof-$VERSION.tar.gz" | md5sum -c -
+
+# If the MD5 sum does not match, exit the script
+if [ $? -ne 0 ]; then
+  echo "MD5 checksum does not match. Exiting."
+  exit 1
+fi
+
+# Extract the downloaded tarball
+tar -xvf lsof-$VERSION.tar.gz
+
+# Change to the extracted directory
+cd lsof-$VERSION
+
+# Configure the package
+./configure --prefix=/usr --disable-static
+
+# Build the package
+make
+
+# Run the tests as root, if necessary
+sudo make check
+
+# Install the package as the root user
+sudo make install
+
+# Cleanup
+cd ..
+rm -rf lsof-$VERSION lsof-$VERSION.tar.gz
+
+echo "lsof-$VERSION installation is complete."
