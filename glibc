@@ -9,53 +9,111 @@ GLIBC_FHS_PATCH="glibc-$GLIBC_VERSION-fhs-$GLIBC_FHS_PATCH_VERSION.patch"
 tar -xf glibc-$GLIBC_VERSION.tar.xz
 cd "glibc-$GLIBC_VERSION"
 
-# Step 2: Create symbolic links for LSB compliance
-case $(uname -m) in
-    i?86)   ln -sfv ld-linux.so.2 /lib/ld-lsb.so.3 ;;
-    x86_64)
-        ln -sfv ../lib/ld-linux-x86-64.so.2 /lib64
-        ln -sfv ../lib/ld-linux-x86-64.so.2 /lib64/ld-lsb-x86-64.so.3
-    ;;
-esac
-
-# Step 3: Apply FHS patch
+# Step 2: Apply FHS patch to make programs store runtime data in FHS-compliant locations
 patch -Np1 -i ../$GLIBC_FHS_PATCH
 
-# Step 4: Create a dedicated build directory
+# Step 3: Create a dedicated build directory
 mkdir -v build
 cd build
 
-# Step 5: Ensure utilities are installed into /usr/sbin
+# Step 4: Ensure utilities are installed into /usr/sbin
 echo "rootsbindir=/usr/sbin" > configparms
 
-# Step 6: Prepare Glibc for compilation
+# Step 5: Prepare Glibc for compilation
 ../configure                             \
       --prefix=/usr                      \
-      --host=x86_64                      \
-      --build=$(../scripts/config.guess) \
+      --disable-werror                   \
       --enable-kernel=5.4                \
-      --with-headers=/usr/include        \
+      --enable-stack-protector=strong    \
       --disable-nscd                     \
       libc_cv_slibdir=/usr/lib
 
-# Step 7: Compile the package
+# Step 6: Compile Glibc
 make
 
-# Step 8: Install the package
+# Step 7: Run the test suite (do not skip)
+make check
+
+# Note: Address common test failures
+grep "Timed out" $(find -name \*.out)
+
+# Step 8: Prevent ld.so.conf warning
+touch /etc/ld.so.conf
+
+# Step 9: Fix Makefile for modern configurations
+sed '/test-installation/s@$(PERL)@echo not running@' -i ../Makefile
+
+# Step 10: Perform DESTDIR installation
+make DESTDIR=$PWD/dest install
+install -vm755 dest/usr/lib/*.so.* /usr/lib
+
+# Step 11: Continue standard installation procedures
 make install
 
-# Step 9: Fix the hard coded path in the ldd script
+# Step 12: Fix the ldd script
 sed '/RTLDLIST=/s@/usr@@g' -i /usr/bin/ldd
 
-# Step 10: Perform a sanity check
-echo 'int main(){}' | gcc -xc -
-readelf -l a.out | grep ld-linux
+# Step 13: Install essential locales for US English
+localedef -i C -f UTF-8 C.UTF-8
+localedef -i en_US -f ISO-8859-1 en_US
+localedef -i en_US -f UTF-8 en_US.UTF-8
 
-# Check if the output is correct
-if readelf -l a.out | grep -q "Requesting program interpreter"; then
-    echo "Sanity check passed."
-    rm -v a.out
-else
-    echo "Sanity check failed. Investigate the issue before continuing."
-    exit 1
-fi
+# Step 14: Configure Glibc
+
+# Create nsswitch.conf
+cat > /etc/nsswitch.conf << "EOF"
+# Begin /etc/nsswitch.conf
+
+passwd: files
+group: files
+shadow: files
+
+hosts: files dns
+networks: files
+
+protocols: files
+services: files
+ethers: files
+rpc: files
+
+# End /etc/nsswitch.conf
+EOF
+
+# Step 15: Install and configure time zone data
+tar -xf ../../tzdata2024b.tar.gz
+
+ZONEINFO=/usr/share/zoneinfo
+mkdir -pv $ZONEINFO/{posix,right}
+
+for tz in etcetera southamerica northamerica europe africa antarctica  \
+          asia australasia backward; do
+    zic -L /dev/null   -d $ZONEINFO       ${tz}
+    zic -L /dev/null   -d $ZONEINFO/posix ${tz}
+    zic -L leapseconds -d $ZONEINFO/right ${tz}
+done
+
+cp -v zone.tab zone1970.tab iso3166.tab $ZONEINFO
+zic -d $ZONEINFO -p America/New_York
+unset ZONEINFO
+
+# Step 16: Set local time zone to Sydney, Australia
+ln -sfv /usr/share/zoneinfo/Australia/Sydney /etc/localtime
+
+# Step 17: Configure dynamic loader
+cat > /etc/ld.so.conf << "EOF"
+# Begin /etc/ld.so.conf
+/usr/local/lib
+/opt/lib
+
+EOF
+
+cat >> /etc/ld.so.conf << "EOF"
+# Add an include directory
+include /etc/ld.so.conf.d/*.conf
+
+EOF
+mkdir -pv /etc/ld.so.conf.d
+
+# Step 18: Reboot the system immediately after installation
+echo "Rebooting the system..."
+reboot
