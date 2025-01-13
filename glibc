@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# Variables for version iteration
+GLIBC_VERSION="2.40"
+GLIBC_FHS_PATCH_VERSION="1"
+GLIBC_FHS_PATCH="glibc-$GLIBC_VERSION-fhs-$GLIBC_FHS_PATCH_VERSION.patch"
+
+# Step 1: Extract Glibc tarball
+tar -xf glibc-$GLIBC_VERSION.tar.xz
+cd "glibc-$GLIBC_VERSION"
+
+# Step 2: Create symbolic links for LSB compliance
+case $(uname -m) in
+    i?86)   ln -sfv ld-linux.so.2 /lib/ld-lsb.so.3 ;;
+    x86_64)
+        ln -sfv ../lib/ld-linux-x86-64.so.2 /lib64
+        ln -sfv ../lib/ld-linux-x86-64.so.2 /lib64/ld-lsb-x86-64.so.3
+    ;;
+esac
+
+# Step 3: Apply FHS patch
+patch -Np1 -i ../$GLIBC_FHS_PATCH
+
+# Step 4: Create a dedicated build directory
+mkdir -v build
+cd build
+
+# Step 5: Ensure utilities are installed into /usr/sbin
+echo "rootsbindir=/usr/sbin" > configparms
+
+# Step 6: Prepare Glibc for compilation
+../configure                             \
+      --prefix=/usr                      \
+      --host=x86_64                      \
+      --build=$(../scripts/config.guess) \
+      --enable-kernel=5.4                \
+      --with-headers=/usr/include        \
+      --disable-nscd                     \
+      libc_cv_slibdir=/usr/lib
+
+# Step 7: Compile the package
+make
+
+# Step 8: Install the package
+make install
+
+# Step 9: Fix the hard coded path in the ldd script
+sed '/RTLDLIST=/s@/usr@@g' -i /usr/bin/ldd
+
+# Step 10: Perform a sanity check
+echo 'int main(){}' | gcc -xc -
+readelf -l a.out | grep ld-linux
+
+# Check if the output is correct
+if readelf -l a.out | grep -q "Requesting program interpreter"; then
+    echo "Sanity check passed."
+    rm -v a.out
+else
+    echo "Sanity check failed. Investigate the issue before continuing."
+    exit 1
+fi
