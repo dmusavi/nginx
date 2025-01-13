@@ -6,7 +6,6 @@ GMP_VERSION="6.3.0"
 MPFR_VERSION="4.2.1"
 MPC_VERSION="1.3.1"
 TAR="gcc-$VERSION.tar.xz"
-LFS_TAR="gcc-lfs-$VERSION.tar.xz"
 
 # Step 1: Extract GCC and dependencies tarballs
 tar -xf $TAR
@@ -38,11 +37,11 @@ cd build
 # Step 5: Prepare GCC for compilation
 ../configure                                       \
     --build=$(../config.guess)                     \
-    --host=$LFS_TGT                                \
-    --target=$LFS_TGT                              \
-    LDFLAGS_FOR_TARGET=-L$PWD/$LFS_TGT/libgcc      \
+    --host=x86_64                                  \
+    --target=x86_64                                \
+    LDFLAGS_FOR_TARGET=-L$PWD/libgcc               \
     --prefix=/usr                                  \
-    --with-build-sysroot=$LFS                      \
+    --with-build-sysroot=/                         \
     --enable-default-pie                           \
     --enable-default-ssp                           \
     --disable-nls                                  \
@@ -59,7 +58,7 @@ cd build
 make
 
 # Step 7: Install the package
-make DESTDIR=$LFS install
+make install
 
 # Step 8: Create a utility symlink for cc
-ln -sv gcc $LFS/usr/bin/cc
+ln -sv gcc /usr/bin/cc
