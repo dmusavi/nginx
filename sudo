@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# Variables
+URL="https://www.sudo.ws/dist/sudo-1.9.15p5.tar.gz"
+VERSION="1.9.15p5"
+MD5SUM="4166279cb188ecb6641c7a2ba5f68270"
+
+# Download the package
+curl -O $URL
+
+# Verify the download by checking the MD5 sum
+echo "$MD5SUM sudo-$VERSION.tar.gz" | md5sum -c -
+
+# If the MD5 sum does not match, exit the script
+if [ $? -ne 0 ]; then
+  echo "MD5 checksum does not match. Exiting."
+  exit 1
+fi
+
+# Extract the downloaded tarball
+tar -xvf sudo-$VERSION.tar.gz
+
+# Change to the extracted directory
+cd sudo-$VERSION
+
+# Configure the package
+./configure --prefix=/usr              \
+            --libexecdir=/usr/lib      \
+            --with-secure-path         \
+            --with-env-editor          \
+            --docdir=/usr/share/doc/sudo-$VERSION \
+            --with-passprompt="[sudo] password for %p: "
+
+# Build the package
+make
+
+# Run the tests
+env LC_ALL=C make check |& tee make-check.log
+grep failed make-check.log
+
+# Install the package as the root user
+sudo make install
+
+# Configure sudoers file
+sudo bash -c 'cat > /etc/sudoers.d/00-sudo << "EOF"
+Defaults secure_path="/usr/sbin:/usr/bin"
+%wheel ALL=(ALL) ALL
+EOF'
+
+# Optional: PAM configuration
+if [ -d /etc/pam.d ]; then
+  sudo bash -c 'cat > /etc/pam.d/sudo << "EOF"
+# Begin /etc/pam.d/sudo
+
+# include the default auth settings
+auth      include     system-auth
+
+# include the default account settings
+account   include     system-account
+
+# Set default environment variables for the service user
+session   required    pam_env.so
+
+# include system session defaults
+session   include     system-session
+
+# End /etc/pam.d/sudo
+EOF
+chmod 644 /etc/pam.d/sudo'
+fi
+
+# Cleanup
+cd ..
+rm -rf sudo-$VERSION sudo-$VERSION.tar.gz
+
+echo "sudo-$VERSION installation is complete."
