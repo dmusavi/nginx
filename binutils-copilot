@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# Variables for version iteration
+VERSION="2.41"
+TAR="binutils-$VERSION.tar.xz"
+LFS_TAR="binutils-lfs-20230818.tar.xz"
+
+# Step 1: Extract Binutils tarball
+tar -xf $TAR
+cd "binutils-$VERSION"
+
+# Step 2: Apply workaround for inconsistent use of libtool
+sed '6009s/$add_dir//' -i ltmain.sh
+
+# Step 3: Create a separate build directory
+mkdir -v build
+cd build
+
+# Step 4: Prepare Binutils for compilation
+../configure                   \
+    --prefix=/usr              \
+    --build=$(../config.guess) \
+    --host=$(../config.guess)  \
+    --disable-nls              \
+    --enable-shared            \
+    --enable-gprofng=no        \
+    --disable-werror           \
+    --enable-64-bit-bfd        \
+    --enable-new-dtags         \
+    --enable-default-hash-style=gnu
+
+# Step 5: Compile the package
+make
+
+# Step 6: Install the package
+make install
+
+# Step 7: Remove harmful libtool archive files and unnecessary static libraries
+rm -v /usr/lib/lib{bfd,ctf,ctf-nobfd,opcodes,sframe}.{a,la}
