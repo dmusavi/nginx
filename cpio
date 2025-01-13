@@ -1,0 +1,59 @@
+#!/bin/bash
+
+# Variables
+URL="https://ftp.gnu.org/gnu/cpio/cpio-2.15.tar.bz2"
+VERSION="2.15"
+MD5SUM="3394d444ca1905ea56c94b628b706a0b"
+
+# Download the package
+curl -O $URL
+
+# Verify the download by checking the MD5 sum
+echo "$MD5SUM cpio-$VERSION.tar.bz2" | md5sum -c -
+
+# If the MD5 sum does not match, exit the script
+if [ $? -ne 0 ]; then
+  echo "MD5 checksum does not match. Exiting."
+  exit 1
+fi
+
+# Extract the downloaded tarball
+tar -xvf cpio-$VERSION.tar.bz2
+
+# Change to the extracted directory
+cd cpio-$VERSION
+
+# Configure the package
+./configure --prefix=/usr \
+            --enable-mt   \
+            --with-rmt=/usr/libexec/rmt
+
+# Build the package
+make
+
+# Generate HTML documentation
+makeinfo --html -o doc/html doc/cpio.texi
+makeinfo --html --no-split -o doc/cpio.html doc/cpio.texi
+makeinfo --plaintext -o doc/cpio.txt doc/cpio.texi
+
+# Generate PDF and Postscript documentation, if texlive is installed
+make -C doc pdf || true
+make -C doc ps || true
+
+# Test the results, if desired
+make check || true
+
+# Install the package as the root user
+sudo make install
+sudo install -v -m755 -d /usr/share/doc/cpio-$VERSION/html
+sudo install -v -m644 doc/html/* /usr/share/doc/cpio-$VERSION/html
+sudo install -v -m644 doc/cpio.{html,txt} /usr/share/doc/cpio-$VERSION
+
+# Install PDF and Postscript documentation, if built
+sudo install -v -m644 doc/cpio.{pdf,ps,dvi} /usr/share/doc/cpio-$VERSION || true
+
+# Cleanup
+cd ..
+rm -rf cpio-$VERSION cpio-$VERSION.tar.bz2
+
+echo "cpio-$VERSION installation is complete."
