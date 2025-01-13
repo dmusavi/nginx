@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Variables for version iteration
+VERSION="14.2.0"
+GMP_VERSION="6.3.0"
+MPFR_VERSION="4.2.1"
+MPC_VERSION="1.3.1"
+TAR="gcc-$VERSION.tar.xz"
+LFS_TAR="gcc-lfs-$VERSION.tar.xz"
+
+# Step 1: Extract GCC and dependencies tarballs
+tar -xf $TAR
+cd "gcc-$VERSION"
+
+tar -xf ../mpfr-$MPFR_VERSION.tar.xz
+mv -v mpfr-$MPFR_VERSION mpfr
+
+tar -xf ../gmp-$GMP_VERSION.tar.xz
+mv -v gmp-$GMP_VERSION gmp
+
+tar -xf ../mpc-$MPC_VERSION.tar.gz
+mv -v mpc-$MPC_VERSION mpc
+
+# Step 2: Modify 64-bit library directory name if building on x86_64
+case $(uname -m) in
+  x86_64)
+    sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64
+  ;;
+esac
+
+# Step 3: Override the building rule of libgcc and libstdc++ headers
+sed '/thread_header =/s/@.*@/gthr-posix.h/' -i libgcc/Makefile.in libstdc++-v3/include/Makefile.in
+
+# Step 4: Create a separate build directory
+mkdir -v build
+cd build
+
+# Step 5: Prepare GCC for compilation
+../configure                                       \
+    --build=$(../config.guess)                     \
+    --host=$LFS_TGT                                \
+    --target=$LFS_TGT                              \
+    LDFLAGS_FOR_TARGET=-L$PWD/$LFS_TGT/libgcc      \
+    --prefix=/usr                                  \
+    --with-build-sysroot=$LFS                      \
+    --enable-default-pie                           \
+    --enable-default-ssp                           \
+    --disable-nls                                  \
+    --disable-multilib                             \
+    --disable-libatomic                            \
+    --disable-libgomp                              \
+    --disable-libquadmath                          \
+    --disable-libsanitizer                         \
+    --disable-libssp                               \
+    --disable-libvtv                               \
+    --enable-languages=c,c++
+
+# Step 6: Compile the package
+make
+
+# Step 7: Install the package
+make DESTDIR=$LFS install
+
+# Step 8: Create a utility symlink for cc
+ln -sv gcc $LFS/usr/bin/cc
