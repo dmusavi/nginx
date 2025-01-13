@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Variables for version iteration
+NCURSES_VERSION="6.5"
+TAR="ncurses-$NCURSES_VERSION.tar.gz"
+
+# Step 1: Extract Ncurses tarball
+tar -xf $TAR
+cd "ncurses-$NCURSES_VERSION"
+
+# Step 2: Build the "tic" program on the build host
+mkdir build
+pushd build
+  ../configure AWK=gawk
+  make -C include
+  make -C progs tic
+popd
+
+# Step 3: Prepare Ncurses for compilation
+./configure --prefix=/usr                \
+            --host=x86_64                \
+            --build=$(./config.guess)    \
+            --mandir=/usr/share/man      \
+            --with-manpage-format=normal \
+            --with-shared                \
+            --without-normal             \
+            --with-cxx-shared            \
+            --without-debug              \
+            --without-ada                \
+            --disable-stripping          \
+            AWK=gawk
+
+# Step 4: Compile the package
+make
+
+# Step 5: Install the package
+make DESTDIR=/ TIC_PATH=$(pwd)/build/progs/tic install
+
+# Step 6: Create symlink for libncurses
+ln -sv libncursesw.so /usr/lib/libncurses.so
+
+# Step 7: Edit curses.h to use wide-character definition
+sed -e 's/^#if.*XOPEN.*$/#if 1/' -i /usr/include/curses.h
+
+# Cleanup: Remove the source directory
+cd ..
+rm -rf "ncurses-$NCURSES_VERSION"
