@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Variables for version iteration
+VERSION="6.12.9"
+TAR="linux-$VERSION.tar.xz"
+
+# Step 1: Extract Linux API Headers tarball
+tar -xf $TAR
+cd "linux-$VERSION"
+
+# Step 2: Ensure no stale files are present
+make mrproper
+
+# Step 3: Extract user-visible kernel headers
+make headers
+find usr/include -type f ! -name '*.h' -delete
+
+# Step 4: Copy headers to the appropriate location
+cp -rv usr/include /usr
+
+# Cleanup: Remove the source directory
+cd ..
+rm -rf "linux-$VERSION"
