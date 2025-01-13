@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Variables for version iteration
+GCC_VERSION="14.2.0"
+
+# Step 1: Unpack the GCC tarball
+tar -xf gcc-$GCC_VERSION.tar.xz
+cd "gcc-$GCC_VERSION"
+
+# Step 2: Create a separate build directory for Libstdc++
+mkdir -v build
+cd build
+
+# Step 3: Prepare Libstdc++ for compilation
+../libstdc++-v3/configure           \
+    --host=x86_64                   \
+    --build=$(../config.guess)      \
+    --prefix=/usr                   \
+    --disable-multilib              \
+    --disable-nls                   \
+    --disable-libstdcxx-pch         \
+    --with-gxx-include-dir=/usr/include/c++/$GCC_VERSION
+
+# Step 4: Compile Libstdc++
+make
+
+# Step 5: Install Libstdc++
+make install
+
+# Step 6: Remove harmful libtool archive files
+rm -v /usr/lib/lib{stdc++{,exp,fs},supc++}.la
