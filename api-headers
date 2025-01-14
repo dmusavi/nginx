@@ -4,20 +4,30 @@
 VERSION="6.12.9"
 TAR="linux-$VERSION.tar.xz"
 
+# Check if the tarball exists
+if [ ! -f "$TAR" ]; then
+  echo "Error: $TAR not found."
+  exit 1
+fi
+
 # Step 1: Extract Linux API Headers tarball
-tar -xf $TAR
-cd "linux-$VERSION"
+tar -xf $TAR || { echo "Error: Failed to extract $TAR"; exit 1; }
+cd "linux-$VERSION" || { echo "Error: Directory linux-$VERSION not found"; exit 1; }
 
 # Step 2: Ensure no stale files are present
-make mrproper
+make mrproper || { echo "Error: 'make mrproper' failed"; exit 1; }
 
 # Step 3: Extract user-visible kernel headers
-make headers
+make headers || { echo "Error: 'make headers' failed"; exit 1; }
+
+# Step 4: Remove non-header files from the output
 find usr/include -type f ! -name '*.h' -delete
 
-# Step 4: Copy headers to the appropriate location
-cp -rv usr/include /usr
+# Step 5: Copy headers to the appropriate location
+cp -rv usr/include /usr || { echo "Error: Failed to copy headers to /usr"; exit 1; }
 
 # Cleanup: Remove the source directory
 cd ..
 rm -rf "linux-$VERSION"
+
+echo "Linux API headers successfully installed."
