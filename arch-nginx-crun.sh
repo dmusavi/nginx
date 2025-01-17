@@ -73,6 +73,13 @@ cat <<EOF > "$BUNDLE_DIR/config.json"
             {"type": "pid"},
             {"type": "mount"},
             {"type": "network"}
+        ],
+        "portMappings": [
+            {
+                "hostPort": 8088,
+                "containerPort": 80,
+                "protocol": "tcp"
+            }
         ]
     },
     "mounts": [
