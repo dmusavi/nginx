@@ -20,7 +20,7 @@ tar -xzf ${LIBNET_TAR}
 
 # Change to the libnet source directory
 cd libnet-${LIBNET_VERSION}
-
+chmod -R +w . 
 # Set ownership and correct permissions
 echo "Setting ownership and permissions for libnet-${LIBNET_VERSION}..."
 sudo chown -R $(whoami):$(whoami) .
