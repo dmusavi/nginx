@@ -5,7 +5,7 @@ PACKAGE_NAME="libffi"
 VERSION="3.4.6"
 TAR_FILENAME="${PACKAGE_NAME}-${VERSION}.tar.gz"
 URL="https://github.com/${PACKAGE_NAME}/${PACKAGE_NAME}/releases/tag/v${VERSION}/${TAR_FILENAME}"
-HASH="d046c616770262b2d7142c4d579934a9"  # MD5 hash for libffi-3.4.6, update for other versions
+HASH="50b012d23379d0de42482b10601d7856"  # MD5 hash for libffi-3.4.6, update for other versions
 INSTALL_DIR="/usr"
 BUILD_DIR="/tmp/${PACKAGE_NAME}-build"
 
