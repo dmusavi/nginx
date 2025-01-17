@@ -22,7 +22,7 @@ tar -xzf ${LIBNL_TAR}
 
 # Change to the libnl source directory
 cd libnl-${LIBNL_VERSION}
-
+chmod -R +w . 
 # Set ownership and correct permissions
 echo "Setting ownership and permissions for libnl-${LIBNL_VERSION}..."
 sudo chown -R $(whoami):$(whoami) .
