@@ -20,7 +20,7 @@ tar -xzf ${LIBSECCOMP_TAR}
 
 # Change to the libseccomp source directory
 cd libseccomp-${LIBSECCOMP_VERSION}
-
+chmod -R +w . 
 # Set ownership and correct permissions
 echo "Setting ownership and permissions for libseccomp-${LIBSECCOMP_VERSION}..."
 sudo chown -R $(whoami):$(whoami) .
