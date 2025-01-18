@@ -40,13 +40,18 @@ tar -xvf "${TAR_FILENAME}" || { echo "Failed to extract ${PACKAGE_NAME}."; exit 
 EXTRACT_DIR="${PACKAGE_NAME}-${VERSION}"
 cd "${EXTRACT_DIR}" || exit
 chmod -R d:d .
+
 # Configure build with shared library support
 echo "Configuring ${PACKAGE_NAME} with shared support..."
 ./configure --prefix="${INSTALL_DIR}" --enable-shared || { echo "Configuration failed."; exit 1; }
 
 # Build
 echo "Building ${PACKAGE_NAME}..."
-make || { echo "Build failed."; exit 1; }
+make  || { echo "Build failed."; exit 1; }
+
+# Run tests if needed
+echo "Running tests..."
+make check -j12 || { echo "Tests failed."; exit 1; }
 
 # Install
 echo "Installing ${PACKAGE_NAME}..."
