@@ -57,6 +57,10 @@ echo "Configuring ${PACKAGE_NAME}..."
 echo "Building ${PACKAGE_NAME}..."
 make || { echo "Build failed."; exit 1; }
 
+# Run tests
+echo "Running tests..."
+make check -j12 || { echo "Tests failed."; exit 1; }
+
 echo "Installing ${PACKAGE_NAME}..."
 sudo make install || { echo "Installation failed."; exit 1; }
 
