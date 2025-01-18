@@ -6,6 +6,14 @@ LIBSECCOMP_TAR="libseccomp-${LIBSECCOMP_VERSION}.tar.gz"
 LIBSECCOMP_MD5="c27a5e43cae1e89e6ebfedeea734c9b4"
 LIBSECCOMP_URL="https://github.com/seccomp/libseccomp/releases/download/v2.5.5/${LIBSECCOMP_TAR}"
 
+# Ensure necessary commands are available
+for cmd in curl tar make sudo md5sum chown; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        echo "Error: $cmd is not installed. Please install it before running this script."
+        exit 1
+    fi
+done
+
 # Download libseccomp
 echo "Downloading libseccomp version ${LIBSECCOMP_VERSION}..."
 curl -LO ${LIBSECCOMP_URL}
@@ -26,18 +34,17 @@ echo "Setting ownership and permissions for libseccomp-${LIBSECCOMP_VERSION}..."
 sudo chown -R $(whoami):$(whoami) .
 sudo chmod -R u+rwX,g+rX,o+rx .
 
-# Configure, compile, and install libseccomp
+# Configure, compile, and install libseccomp with shared support
 echo "Configuring libseccomp..."
-./configure --prefix=/usr --disable-static
+./configure --prefix=/usr --disable-static --enable-shared
 
 echo "Building libseccomp..."
 make
 
-# Run tests if needed
-echo "Running tests for libseccomp..."
-make check
+# Run tests with parallel execution
+echo "Running tests for libseccomp with -j12..."
+make check -j12
 
-# Install libseccomp
 echo "Installing libseccomp..."
 sudo make install
 
