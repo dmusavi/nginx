@@ -49,16 +49,20 @@ chmod -R u+w "${EXTRACT_DIR}"
 echo "Changing ownership of extracted directory..."
 chown -R $(id -u):$(id -g) "${EXTRACT_DIR}"
 
-# Configure, build, and install 
+# Configure, build, and install with shared support
 cd "${EXTRACT_DIR}" || exit
-echo "Configuring ${PACKAGE_NAME}..."
-./configure --prefix="${INSTALL_DIR}" --with-libnl --with-libseccomp --with-libffi --disable-static || { echo "Configuration failed."; exit 1; }
+echo "Configuring ${PACKAGE_NAME} with shared support..."
+./configure --prefix="${INSTALL_DIR}" --with-libnl --with-libseccomp --with-libffi --disable-static --enable-shared || { echo "Configuration failed."; exit 1; }
 
 echo "Building ${PACKAGE_NAME}..."
 make || { echo "Build failed."; exit 1; }
 
 echo "Installing ${PACKAGE_NAME}..."
 sudo make install || { echo "Installation failed."; exit 1; }
+
+# Run tests with parallel execution
+echo "Running tests for ${PACKAGE_NAME} with -j12..."
+make check -j12
 
 # Clean up
 echo "Cleaning up..."
