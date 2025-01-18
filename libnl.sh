@@ -17,12 +17,13 @@ echo "Verifying MD5 checksum..."
 echo "${LIBNL_MD5} ${LIBNL_TAR}" | md5sum -c -
 
 # Extract libnl
-echo "Extracting ${LIBNL_TAR}..."
+echo "Extracting libnl..."
 tar -xzf ${LIBNL_TAR}
 
 # Change to the libnl source directory
 cd libnl-${LIBNL_VERSION}
 chmod -R +w . 
+
 # Set ownership and correct permissions
 echo "Setting ownership and permissions for libnl-${LIBNL_VERSION}..."
 sudo chown -R $(whoami):$(whoami) .
@@ -30,13 +31,13 @@ sudo chmod -R u+rwX,g+rX,o+rx .
 
 # Configure, compile, and install libnl
 echo "Configuring libnl..."
-./configure --prefix=/usr --sysconfdir=/etc --disable-static
+./configure --prefix=/usr --sysconfdir=/etc --enable-shared --disable-static
 
 echo "Building libnl..."
 make
 
 # Run tests if needed
-# make check
+make check
 
 # Install libnl
 echo "Installing libnl..."
