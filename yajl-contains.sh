@@ -4,7 +4,7 @@
 PACKAGE_NAME="yajl"
 VERSION="2.1.0"
 TAR_FILENAME="${PACKAGE_NAME}-${VERSION}.tar.gz"
-URL="https://github.com/lloyd/${PACKAGE_NAME}/archive/refs/tags/${VERSION}.tar.gz"
+URL="https://codeload.github.com/lloyd/${PACKAGE_NAME}/tar.gz/refs/tags/${VERSION}"
 BUILD_DIR="/tmp/${PACKAGE_NAME}-build"
 INSTALL_DIR="/usr"
 
@@ -39,11 +39,10 @@ tar -xvf "${TAR_FILENAME}" || { echo "Failed to extract ${PACKAGE_NAME}."; exit 
 # Change directory to extracted source
 EXTRACT_DIR="${PACKAGE_NAME}-${VERSION}"
 cd "${EXTRACT_DIR}" || exit
-chown -R d:d .
-
-# Configure build
-echo "Configuring ${PACKAGE_NAME}..."
-./configure --prefix="${INSTALL_DIR}" || { echo "Configuration failed."; exit 1; }
+chmod -R d:d .
+# Configure build with shared library support
+echo "Configuring ${PACKAGE_NAME} with shared support..."
+./configure --prefix="${INSTALL_DIR}" --enable-shared || { echo "Configuration failed."; exit 1; }
 
 # Build
 echo "Building ${PACKAGE_NAME}..."
