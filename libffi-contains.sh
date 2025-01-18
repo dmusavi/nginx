@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Generalized variables
+# Define variables for libffi
 PACKAGE_NAME="libffi"
 VERSION="3.4.6"
 TAR_FILENAME="${PACKAGE_NAME}-${VERSION}.tar.gz"
-URL="https://github.com/${PACKAGE_NAME}/${PACKAGE_NAME}/releases/tag/v${VERSION}/${TAR_FILENAME}"
-HASH="50b012d23379d0de42482b10601d7856"  # MD5 hash for libffi-3.4.6, update for other versions
+URL="https://github.com/libffi/libffi/releases/download/v3.4.6/${TAR_FILENAME}"
+HASH="B9CAC6C5997DCA2B3787A59EDE34E0EB"  # Correct MD5 hash for libffi-3.4.6
 INSTALL_DIR="/usr"
 BUILD_DIR="/tmp/${PACKAGE_NAME}-build"
 
@@ -15,7 +15,7 @@ command_exists() {
 }
 
 # Ensure necessary commands are available
-for cmd in wget tar make sudo md5sum chown; do
+for cmd in wget tar make sudo md5sum chown curl; do
     if ! command_exists "$cmd"; then
         echo "Error: $cmd is not installed. Please install it before running this script."
         exit 1
@@ -28,7 +28,7 @@ cd "${BUILD_DIR}" || exit
 
 # Download the tarball
 echo "Downloading ${PACKAGE_NAME}..."
-wget -c "${URL}" -O "${TAR_FILENAME}"
+curl -LO "${URL}"
 
 # Remove write protection from tarball
 chmod u+w "${TAR_FILENAME}"
