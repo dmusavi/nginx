@@ -255,11 +255,11 @@ setup_networking() {
     sudo ip netns exec "$NETNS_NAME" ip addr add "$CONTAINER_IP" dev veth0  # Assign IP to container's veth interface
     sudo ip netns exec "$NETNS_NAME" ip link set veth0 up  # Bring up container's veth interface
 }
-
 # Function to start the container
 start_container() {
-    log "Starting container $IMAGE_ID..."  # Log container startup
-    sudo ip netns exec "$NETNS_NAME" crun --runtime-flag=no-pivot -b "$BUNDLE_DIR" -n "$IMAGE_ID" start  # Start the container using crun
+    log "Starting container $IMAGE_ID..."
+    sudo ip netns exec "$NETNS_NAME" crun run -b "$BUNDLE_DIR" "$IMAGE_ID" &
+    echo $! > /tmp/container_$IMAGE_ID.pid  # Write the PID to a file
 }
 
 # Main function
