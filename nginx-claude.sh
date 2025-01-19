@@ -146,156 +146,119 @@ EOF
     fi
 }
 
+#!/usr/bin/env bash
+
+# ... (previous parts of the script remain unchanged)
+
 # Function to create container config
 create_container_config() {
-    cat <<EOF > "$BUNDLE_DIR/config.json"
+    cat << EOF > "$BUNDLE_DIR/config.json"
 {
     "ociVersion": "1.0.2",
+    # Specifies compliance with version 1.0.2 of the OCI runtime spec, ensuring compatibility with container runtime tools like crun.
+
     "process": {
-        "user": {
-            "uid": 1000,
-            "gid": 1000
-        },
+        # Begins the process configuration section, detailing how the main process in the container should behave.
+
+        "user": {"uid": 1000, "gid": 1000},
+        # Sets the user ID and group ID for the process inside the container to 1000, typically corresponding to a non-root user for enhanced security.
+
         "args": ["/usr/bin/nginx", "-g", "daemon off;"],
-        "env": [
-            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-            "LANG=C.UTF-8"
-        ],
+        # Specifies the command to run when the container starts; here, it's Nginx with the option to not daemonize, keeping the process in the foreground.
+
+        "env": ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C.UTF-8"],
+        # Sets environment variables for the container process. PATH ensures executables are found, LANG sets the language environment.
+
         "cwd": "/",
+        # Sets the current working directory inside the container to the root directory.
+
         "capabilities": {
-            "bounding": [
-                "CAP_CHOWN",
-                "CAP_NET_BIND_SERVICE"
-            ],
-            "effective": [
-                "CAP_CHOWN",
-                "CAP_NET_BIND_SERVICE"
-            ]
+            "bounding": ["CAP_CHOWN", "CAP_NET_BIND_SERVICE"],
+            "effective": ["CAP_CHOWN", "CAP_NET_BIND_SERVICE"]
         },
-        "rlimits": [
-            {
-                "type": "RLIMIT_NOFILE",
-                "hard": 1024,
-                "soft": 1024
-            }
-        ],
+        # Grants specific Linux capabilities. CAP_CHOWN allows changing file ownership, CAP_NET_BIND_SERVICE allows binding to privileged ports like 80 for Nginx.
+
+        "rlimits": [{"type": "RLIMIT_NOFILE", "hard": 1024, "soft": 1024}],
+        # Sets resource limits for the number of open files, controlling resource usage to prevent exhaustion.
+
         "terminal": false
+        # Indicates this container does not run interactively; no terminal is provided.
+
     },
-    "root": {
-        "path": "rootfs",
-        "readonly": false
-    },
+    "root": {"path": "rootfs", "readonly": false},
+    # Specifies where the root filesystem of the container should be ('rootfs') and that it's writable for necessary operations.
+
     "hostname": "arch-container",
+    # Sets the hostname within the container, useful for network identification.
+
     "linux": {
+        # Begins Linux-specific configurations.
+
         "namespaces": [
             {"type": "pid"},
             {"type": "mount"},
             {"type": "network", "path": "/var/run/netns/$NETNS_NAME"}
         ],
+        # Defines isolation namespaces for PID, mount, and network, enhancing security by isolating these resources from the host.
+
         "resources": {
-            "memory": {
-                "limit": 512000000,
-                "swap": 0
-            },
-            "cpu": {
-                "shares": 1024,
-                "quota": 100000,
-                "period": 100000
-            },
-            "pids": {
-                "limit": 100
-            }
+            "memory": {"limit": 512000000, "swap": 0},
+            # Limits memory usage to 512MB, with no swap space, controlling resource allocation.
+
+            "cpu": {"shares": 1024, "quota": 100000, "period": 100000},
+            # Configures CPU time allocation, where shares, quota, and period manage CPU resource distribution.
+
+            "pids": {"limit": 100}
+            # Limits the number of processes to prevent excessive process creation.
+
         },
         "seccomp": {
             "defaultAction": "SCMP_ACT_ERRNO",
+            # Default action for system calls not explicitly allowed is to return an error.
+
             "architectures": ["SCMP_ARCH_X86_64"],
+            # Specifies this seccomp profile applies to x86_64 architecture.
+
             "syscalls": [
                 {
                     "names": [
-                        "accept4",
-                        "bind",
-                        "clone",
-                        "close",
-                        "connect",
-                        "epoll_create1",
-                        "epoll_ctl",
-                        "epoll_wait",
-                        "exit",
-                        "exit_group",
-                        "fstat",
-                        "futex",
-                        "getcwd",
-                        "getdents64",
-                        "getpid",
-                        "ioctl",
-                        "listen",
-                        "lseek",
-                        "mkdir",
-                        "mmap",
-                        "mount",
-                        "open",
-                        "openat",
-                        "pipe2",
-                        "read",
-                        "recv",
-                        "recvfrom",
-                        "rt_sigaction",
-                        "rt_sigprocmask",
-                        "rt_sigreturn",
-                        "select",
-                        "send",
-                        "sendto",
-                        "set_robust_list",
-                        "set_tid_address",
-                        "socket",
-                        "stat",
-                        "write"
+                        # Lists system calls that are explicitly allowed for security purposes.
+                        "accept4", "bind", "clone", "close", "connect", "epoll_create1", "epoll_ctl", "epoll_wait",
+                        "exit", "exit_group", "fstat", "futex", "getcwd", "getdents64", "getpid", "ioctl", "listen",
+                        "lseek", "mkdir", "mmap", "mount", "open", "openat", "pipe2", "read", "recv", "recvfrom",
+                        "rt_sigaction", "rt_sigprocmask", "rt_sigreturn", "select", "send", "sendto",
+                        "set_robust_list", "set_tid_address", "socket", "stat", "write"
                     ],
                     "action": "SCMP_ACT_ALLOW"
+                    # Allows these specific system calls, reducing the attack surface by blocking others by default.
                 }
             ]
         }
     },
     "mounts": [
-        {
-            "destination": "/proc",
-            "type": "proc",
-            "source": "proc"
-        },
-        {
-            "destination": "/dev",
-            "type": "tmpfs",
-            "source": "tmpfs",
-            "options": ["nosuid", "strictatime", "mode=755", "size=65536k"]
-        },
-        {
-            "destination": "/dev/pts",
-            "type": "devpts",
-            "source": "devpts",
-            "options": ["nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620"]
-        },
-        {
-            "destination": "/sys",
-            "type": "sysfs",
-            "source": "sysfs",
-            "options": ["nosuid", "noexec", "nodev", "ro"]
-        },
-        {
-            "destination": "/etc/nginx/nginx.conf",
-            "source": "$HOST_NGINX_CONF",
-            "type": "bind",
-            "options": ["ro", "rbind"]
-        },
-        {
-            "destination": "/usr/share/nginx/html",
-            "source": "$HOST_MEDIA_DIR",
-            "type": "bind",
-            "options": ["ro", "rbind"]
-        }
+        {"destination": "/proc", "type": "proc", "source": "proc"},
+        # Mounts the proc filesystem, providing processes information.
+
+        {"destination": "/dev", "type": "tmpfs", "source": "tmpfs", "options": ["nosuid", "strictatime", "mode=755", "size=65536k"]},
+        # Creates a tmpfs for /dev, ensuring devices are available but with security options to prevent SUID execution.
+
+        {"destination": "/dev/pts", "type": "devpts", "source": "devpts", "options": ["nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620"]},
+        # Mounts a pseudo terminal filesystem with restrictions to prevent execution and SUID.
+
+        {"destination": "/sys", "type": "sysfs", "source": "sysfs", "options": ["nosuid", "noexec", "nodev", "ro"]},
+        # Mounts sysfs read-only, providing system information without allowing modifications.
+
+        {"destination": "/etc/nginx/nginx.conf", "source": "$HOST_NGINX_CONF", "type": "bind", "options": ["ro", "rbind"]},
+        # Binds the host's Nginx config file into the container, read-only for configuration.
+
+        {"destination": "/usr/share/nginx/html", "source": "$HOST_MEDIA_DIR", "type": "bind", "options": ["ro", "rbind"]}
+        # Binds a directory for serving media content, ensuring updates on the host are reflected in the container.
     ]
 }
 EOF
 }
+
+# ... (rest of the script remains unchanged)
 
 # Function to set up networking
 setup_networking() {
