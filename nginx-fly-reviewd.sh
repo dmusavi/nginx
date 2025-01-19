@@ -190,8 +190,10 @@ create_container_config() {
     ]
 }
 EOF
+    sudo chmod 644 "$BUNDLE_DIR/config.json"  # Set permissions for config.json
     log "Container config created."
 }
+
 
 # Function to create container config
 create_container_config() {
