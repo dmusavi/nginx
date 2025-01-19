@@ -172,7 +172,7 @@ EOF
 # Function to create container config
 create_container_config() {
     cat << EOF > "$BUNDLE_DIR/config.json"  # Create container configuration
-{
+         {
     "ociVersion": "1.0.2",
     "process": {
         "user": {"uid": 1000, "gid": 1000},
