@@ -56,7 +56,6 @@ cleanup() {
         sudo ip netns del "$NETNS_NAME" 2>/dev/null || true
     fi
 
-    sudo ip link delete "$BRIDGE_NAME" 2>/dev/null || true
     
     # Remove temporary directories
     sudo rm -rf "$DOWNLOAD_DIR" "$BUNDLE_DIR"
