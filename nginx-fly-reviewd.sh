@@ -211,19 +211,19 @@ EOF
 # Function to set up networking
 setup_networking() {
     log "Setting up network..."
-  
+
+    # Ensure bridge br0 is up
+    if ! ip link show "$BRIDGE_NAME" &>/dev/null; then
+        log "Bridge $BRIDGE_NAME does not exist. Please bring it up using ifup."
+        error_exit "Bridge $BRIDGE_NAME not found."
+    else
+        log "Using existing bridge $BRIDGE_NAME"
+    fi
+
     # Create network namespace if it doesn't exist
     if ! sudo ip netns list | grep -qw "$NETNS_NAME"; then
         log "Creating network namespace $NETNS_NAME..."
         sudo ip netns add "$NETNS_NAME"
-    fi
-
-    # Create bridge if it doesn't exist
-    if ! ip link show "$BRIDGE_NAME" &>/dev/null; then
-        log "Creating bridge $BRIDGE_NAME..."
-        sudo ip link add name "$BRIDGE_NAME" type bridge
-        sudo ip addr add "$BRIDGE_IP" dev "$BRIDGE_NAME"
-        sudo ip link set "$BRIDGE_NAME" up
     fi
 
     # Create veth pair if they don't exist
@@ -234,6 +234,7 @@ setup_networking() {
         sudo ip link set veth1 master "$BRIDGE_NAME"
         sudo ip netns exec "$NETNS_NAME" ip addr add "$CONTAINER_IP" dev veth0
         sudo ip netns exec "$NETNS_NAME" ip link set veth0 up
+        sudo ip link set veth1 up
     fi
 }
 
