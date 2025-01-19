@@ -207,9 +207,11 @@ EOF
     log "Container config created."
 }
 
+
 # Function to set up networking
 setup_networking() {
     log "Setting up network..."
+  
     # Create network namespace if it doesn't exist
     if ! sudo ip netns list | grep -qw "$NETNS_NAME"; then
         log "Creating network namespace $NETNS_NAME..."
@@ -238,7 +240,7 @@ setup_networking() {
 # Function to start the container
 start_container() {
     log "Starting container $IMAGE_ID..."
-    sudo crun --runtime-flag=no-pivot -b "$BUNDLE_DIR" -n "$IMAGE_ID" start
+    sudo ip netns exec "$NETNS_NAME" crun --runtime-flag=no-pivot -b "$BUNDLE_DIR" -n "$IMAGE_ID" start
 }
 
 # Main function
