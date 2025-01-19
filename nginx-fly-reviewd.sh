@@ -121,48 +121,67 @@ download_verify_image() {
 }
 
 # Function to create Nginx config
-create_nginx_config() {
-    if [ ! -f "$HOST_NGINX_CONF" ]; then  # Check if Nginx config already exists
-        log "Creating default Nginx config..."  # Log Nginx config creation
-        cat <<EOF > "$HOST_NGINX_CONF"  # Create Nginx configuration file
-user nginx;
-worker_processes auto;
-error_log /var/log/nginx/error.log warn;
-pid /var/run/nginx.pid;
+create_nginx_config() 
 
-events {
-    worker_connections 1024;
-}
-
-http {
-    include /etc/nginx/mime.types;
-    default_type application/octet-stream;
-
-    log_format main '\$remote_addr - \$remote_user [\$time_local] "\$request" '
-                    '\$status \$body_bytes_sent "\$http_referer" '
-                    '"\$http_user_agent" "\$http_x_forwarded_for"';
-
-    access_log /var/log/nginx/access.log main;
-
-    sendfile on;
-    keepalive_timeout 65;
-
-    server {
-        listen 80;
-        server_name localhost;
-
-        location / {
-            root /usr/share/nginx/html;
-            index index.html;
-            autoindex on;
+{
+    "ociVersion": "1.0.2",
+    "process": {
+        "user": {"uid": 1000, "gid": 1000},
+        "args": ["/usr/bin/nginx", "-g", "daemon off;"],
+        "env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "LANG=C.UTF-8"
+            // "LD_LIBRARY_PATH=/lib:/usr/lib"  // Commented out if not needed
+        ],
+        "cwd": "/",
+        "capabilities": {
+            "bounding": ["CAP_CHOWN", "CAP_NET_BIND_SERVICE"],
+            "effective": ["CAP_CHOWN", "CAP_NET_BIND_SERVICE"]
+        },
+        "rlimits": [{"type": "RLIMIT_NOFILE", "hard": 1024, "soft": 1024}],
+        "terminal": false
+    },
+    "root": {"path": "rootfs", "readonly": false},
+    "hostname": "arch-container",
+    "linux": {
+        "namespaces": [
+            {"type": "pid"},
+            {"type": "mount"},
+            {"type": "network", "path": "/var/run/netns/$NETNS_NAME"},
+            {"type": "cgroup"}
+        ],
+        "resources": {
+            "memory": {"limit": 512000000},
+            "cpu": {"weight": 1024}
+        },
+        "seccomp": {
+            "defaultAction": "SCMP_ACT_ERRNO",
+            "architectures": ["SCMP_ARCH_X86_64"],
+            "syscalls": [
+                {
+                    "names": [
+                        "accept4", "bind", "clone", "close", "connect", "epoll_create1", "epoll_ctl", "epoll_wait",
+                        "exit", "exit_group", "fstat", "futex", "getcwd", "getdents64", "getpid", "ioctl", "listen",
+                        "lseek", "mkdir", "mmap", "mount", "open", "openat", "pipe2", "read", "recv", "recvfrom",
+                        "rt_sigaction", "rt_sigprocmask", "rt_sigreturn", "select", "send", "sendto",
+                        "set_robust_list", "set_tid_address", "socket", "stat", "write"
+                    ],
+                    "action": "SCMP_ACT_ALLOW"
+                }
+            ]
         }
-
-        # Security headers
-        add_header X-Frame-Options "SAMEORIGIN";
-        add_header X-Content-Type-Options "nosniff";
-        add_header X-XSS-Protection "1; mode=block";
-    }
+    },
+    "mounts": [
+        {"destination": "/proc", "type": "proc", "source": "proc"},
+        {"destination": "/dev", "type": "tmpfs", "source": "tmpfs", "options": ["nosuid", "strictatime", "mode=755", "size=65536k"]},
+        {"destination": "/dev/pts", "type": "devpts", "source": "devpts", "options": ["nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620"]},
+        {"destination": "/sys", "type": "sysfs", "source": "sysfs", "options": ["nosuid", "noexec", "nodev", "ro"]},
+        {"destination": "/etc/nginx/nginx.conf", "source": "$HOST_NGINX_CONF", "type": "bind", "options": ["ro", "rbind"]},
+        {"destination": "/usr/share/nginx/html", "source": "$HOST_MEDIA_DIR", "type": "bind", "options": ["ro", "rbind"]}
+        // Removed bind mounts for /lib and /usr/lib if not needed
+    ]
 }
+
 EOF
         sudo chmod 644 "$HOST_NGINX_CONF"  # Set permissions
         log "Nginx config created."  # Log successful Nginx config creation
