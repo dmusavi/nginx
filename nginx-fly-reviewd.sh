@@ -157,34 +157,38 @@ create_container_config() {
 {
     "ociVersion": "1.0.2",
     "process": {
-        "user": {"uid": 1000, "gid": 1000},  # User configuration
-        "args": ["/usr/bin/nginx", "-g", "daemon off;"],  # Command to run container
-        "env": ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C.UTF-8"],  # Environment variables
+        "user": {"uid": 1000, "gid": 1000},
+        "args": ["/usr/bin/nginx", "-g", "daemon off;"],
+        "env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "LANG=C.UTF-8",
+            "LD_LIBRARY_PATH=/lib:/usr/lib"
+        ],
         "cwd": "/",
         "capabilities": {
-            "bounding": ["CAP_CHOWN", "CAP_NET_BIND_SERVICE"],  # Supported capabilities
+            "bounding": ["CAP_CHOWN", "CAP_NET_BIND_SERVICE"],
             "effective": ["CAP_CHOWN", "CAP_NET_BIND_SERVICE"]
         },
-        "rlimits": [{"type": "RLIMIT_NOFILE", "hard": 1024, "soft": 1024}],  # Resource limits
-        "terminal": false  # Disable terminal
+        "rlimits": [{"type": "RLIMIT_NOFILE", "hard": 1024, "soft": 1024}],
+        "terminal": false
     },
-    "root": {"path": "rootfs", "readonly": false},  # Root filesystem configuration
-    "hostname": "arch-container",  # Container hostname
+    "root": {"path": "rootfs", "readonly": false},
+    "hostname": "arch-container",
     "linux": {
-        "namespaces": [  # Namespaces used by the container
+        "namespaces": [
             {"type": "pid"},
             {"type": "mount"},
             {"type": "network", "path": "/var/run/netns/$NETNS_NAME"}
         ],
-        "resources": {  # Resource limits for the container
+        "resources": {
             "memory": {"limit": 512000000, "swap": 0},
             "cpu": {"shares": 1024, "quota": 100000, "period": 100000},
             "pids": {"limit": 100}
         },
-        "seccomp": {  # Security configuration using seccomp
+        "seccomp": {
             "defaultAction": "SCMP_ACT_ERRNO",
             "architectures": ["SCMP_ARCH_X86_64"],
-            "syscalls": [  # Allowed syscalls
+            "syscalls": [
                 {
                     "names": [
                         "accept4", "bind", "clone", "close", "connect", "epoll_create1", "epoll_ctl", "epoll_wait",
@@ -198,11 +202,13 @@ create_container_config() {
             ]
         }
     },
-    "mounts": [  # Volumes and bind mounts for the container
+    "mounts": [
         {"destination": "/proc", "type": "proc", "source": "proc"},
         {"destination": "/dev", "type": "tmpfs", "source": "tmpfs", "options": ["nosuid", "strictatime", "mode=755", "size=65536k"]},
         {"destination": "/dev/pts", "type": "devpts", "source": "devpts", "options": ["nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620"]},
         {"destination": "/sys", "type": "sysfs", "source": "sysfs", "options": ["nosuid", "noexec", "nodev", "ro"]},
+        {"destination": "/lib", "type": "bind", "source": "/lib", "options": ["ro", "rbind"]},
+        {"destination": "/usr/lib", "type": "bind", "source": "/usr/lib", "options": ["ro", "rbind"]},
         {"destination": "/etc/nginx/nginx.conf", "source": "$HOST_NGINX_CONF", "type": "bind", "options": ["ro", "rbind"]},
         {"destination": "/usr/share/nginx/html", "source": "$HOST_MEDIA_DIR", "type": "bind", "options": ["ro", "rbind"]}
     ]
