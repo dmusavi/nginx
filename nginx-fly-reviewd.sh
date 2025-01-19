@@ -193,15 +193,15 @@ create_container_config() {
     "root": {"path": "rootfs", "readonly": false},
     "hostname": "arch-container",
     "linux": {
+        "cgroupsPath": "/sys/fs/cgroup",
         "namespaces": [
             {"type": "pid"},
             {"type": "mount"},
             {"type": "network", "path": "/var/run/netns/$NETNS_NAME"}
         ],
         "resources": {
-            "memory": {"limit": 512000000, "swap": 0},
-            "cpu": {"shares": 1024, "quota": 100000, "period": 100000},
-            "pids": {"limit": 100}
+            "memory": {"limit": 512000000},
+            "cpu": {"shares": 1024}
         },
         "seccomp": {
             "defaultAction": "SCMP_ACT_ERRNO",
