@@ -1,108 +1,112 @@
 #!/bin/bash
 
 # Set strict error handling
-set -euo pipefail
-IFS=$'\n\t'
+set -euo pipefail  # Exit immediately on error, treat unset variables as errors, and ensure correct handling of pipes
+IFS=$'\n\t'  # Set Internal Field Separator for handling newlines and tabs
 
 # Setup logging
 log() {
-    echo -e "[INFO] $1" | logger -s -t $(basename $0)
+    echo -e "[INFO] $1" | logger -s -t $(basename $0)  # Log informational messages with system logger
 }
 error_exit() {
-    echo -e "[ERROR] $1"
-    cleanup
-    exit 1
+    echo -e "[ERROR] $1"  # Log error messages
+    cleanup  # Call cleanup function
+    exit 1  # Exit with a non-zero status
 }
 
 # Log the start of the script
 log "Script started"
 
 # Variables
-readonly IMAGE_URL_ARCH="https://quay.io/oci/archlinux:latest.tar"
-readonly IMAGE_FILE="arch-latest.tar"
-readonly EXPECTED_CHECKSUM="SHA256_CHECKSUM_HERE" # Replace with actual checksum
-readonly DOWNLOAD_DIR="/tmp/arch_image"
-readonly BUNDLE_DIR="/tmp/arch_bundle"
-readonly IMAGE_ID="arch-container"
-readonly NETNS_NAME="arch-netns"
-readonly BRIDGE_NAME="br0"
-readonly BRIDGE_IP="10.10.10.14/24"
-readonly CONTAINER_IP="10.0.20.1/24"
-readonly HOST_PORT="8088"
-readonly CONTAINER_PORT="80"
-readonly HOST_CONFIG_DIR="/home/d/config"
-readonly HOST_NGINX_CONF="$HOST_CONFIG_DIR/nginx.conf"
-readonly HOST_MEDIA_DIR="/home/d/downloads/media"
+readonly IMAGE_URL_ARCH="https://quay.io/oci/archlinux:latest.tar"  # URL for the latest Arch Linux image
+readonly IMAGE_FILE="arch-latest.tar"  # Filename of the downloaded image
+readonly EXPECTED_CHECKSUM="SHA256_CHECKSUM_HERE"  # Expected SHA256 checksum for verification (replace with actual checksum)
+readonly DOWNLOAD_DIR="/tmp/arch_image"  # Directory for storing the downloaded image
+readonly BUNDLE_DIR="/tmp/arch_bundle"  # Directory for the container configuration bundle
+readonly IMAGE_ID="arch-container"  # Container ID for crun
+readonly NETNS_NAME="arch-netns"  # Network namespace name
+readonly BRIDGE_NAME="br0"  # Bridge name (brought up by init systemv ifup br0)
+readonly BRIDGE_IP="10.10.10.14/24"  # IP address for the bridge network
+readonly CONTAINER_IP="10.0.20.1/24"  # IP address for the container within its network
+readonly HOST_PORT="8088"  # Host port for container port forwarding
+readonly CONTAINER_PORT="80"  # Container port
+readonly HOST_CONFIG_DIR="/home/d/config"  # Directory for Nginx configuration on the host
+readonly HOST_NGINX_CONF="$HOST_CONFIG_DIR/nginx.conf"  # Path to Nginx configuration on the host
+readonly HOST_MEDIA_DIR="/home/d/downloads/media"  # Directory for media files to be served by Nginx on the host
 
 # Cleanup function
 cleanup() {
-    local exit_code=$?
-    log "Performing cleanup..."
+    local exit_code=$?  # Capture the exit code
+    log "Performing cleanup..."  # Log cleanup action
 
     # Stop and remove container
     if sudo crun list | grep -qw "$IMAGE_ID"; then
-        sudo crun stop "$IMAGE_ID" 2>/dev/null || true
-        sudo crun delete -f "$IMAGE_ID" 2>/dev/null || true
+        sudo crun stop "$IMAGE_ID" 2>/dev/null || true  # Stop the container
+        sudo crun delete -f "$IMAGE_ID" 2>/dev/null || true  # Force delete the container
     fi
 
     # Clean up network namespace and interfaces
     if sudo ip netns list | grep -qw "$NETNS_NAME"; then
-        sudo ip netns del "$NETNS_NAME" 2>/dev/null || true
+        sudo ip netns del "$NETNS_NAME" 2>/dev/null || true  # Delete network namespace
     fi
 
+    # Remove veth pair if created by this script
+    if ip link show veth1 &>/dev/null; then
+        sudo ip link delete veth1 2>/dev/null || true  # Delete veth pair
+    fi
 
     # Remove temporary directories
-    sudo rm -rf "$DOWNLOAD_DIR" "$BUNDLE_DIR"
+    sudo rm -rf "$DOWNLOAD_DIR" "$BUNDLE_DIR"  # Remove the temporary directories
 
-    exit "$exit_code"
+    exit "$exit_code"  # Exit with the captured exit code
 }
 
 # Set up trap for cleanup
-trap cleanup ERR EXIT
+trap cleanup ERR EXIT  # Catch ERR and EXIT signals to execute cleanup function
 
 # Function to check dependencies
 check_dependencies() {
-    local deps=(crun sudo curl)
+    local deps=(crun sudo curl)  # List of dependencies
     for cmd in "${deps[@]}"; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
-            error_exit "$cmd is not installed. Please install it before running this script."
+            error_exit "$cmd is not installed. Please install it before running this script."  # Check if all dependencies are installed
         fi
     done
 
     # Check crun version
     local crun_version
-    crun_version=$(crun --version | head -n1 | awk '{print $3}')
-    if ! printf '%s\n%s\n' "1.0" "$crun_version" | sort -V -C; then
-        error_exit "crun version must be at least 1.0"
+    crun_version=$(crun --version | head -n1 | awk '{print $3}')  # Get crun version
+    if ! printf '%s\n%s\n' "1.0" "$crun_version" | sort -V -C; then  # Check if crun version is at least 1.0
+        error_exit "crun version must be at least 1.0"  # Exit if version is not valid
     fi
 }
 
 # Function to create necessary directories with proper permissions
 create_directories() {
-    sudo mkdir -p "$DOWNLOAD_DIR" "$BUNDLE_DIR/rootfs" "$HOST_CONFIG_DIR" "$HOST_MEDIA_DIR"
-    sudo chmod 755 "$DOWNLOAD_DIR" "$BUNDLE_DIR" "$BUNDLE_DIR/rootfs" "$HOST_CONFIG_DIR" "$HOST_MEDIA_DIR"
+    sudo mkdir -p "$DOWNLOAD_DIR" "$BUNDLE_DIR/rootfs" "$HOST_CONFIG_DIR" "$HOST_MEDIA_DIR"  # Create required directories
+    sudo chmod 755 "$DOWNLOAD_DIR" "$BUNDLE_DIR" "$BUNDLE_DIR/rootfs" "$HOST_CONFIG_DIR" "$HOST_MEDIA_DIR"  # Set permissions
 }
 
 # Function to download and verify image
 download_verify_image() {
-    if [ ! -f "$DOWNLOAD_DIR/$IMAGE_FILE" ]; then
-        log "Downloading Arch Linux image..."
-        curl -L -o "$DOWNLOAD_DIR/$IMAGE_FILE" "$IMAGE_URL_ARCH"
+    if [ ! -f "$DOWNLOAD_DIR/$IMAGE_FILE" ]; then  # Check if image is already downloaded
+        log "Downloading Arch Linux image..."  # Log image download
+        curl -L -o "$DOWNLOAD_DIR/$IMAGE_FILE" "$IMAGE_URL_ARCH"  # Download the image
 
-        log "Verifying image checksum..."
-        echo "$EXPECTED_CHECKSUM  $DOWNLOAD_DIR/$IMAGE_FILE" | sha256sum -c -s
+        log "Verifying image checksum..."  # Log checksum verification
+        echo "$EXPECTED_CHECKSUM  $DOWNLOAD_DIR/$IMAGE_FILE" | sha256sum -c -s  # Verify SHA256 checksum
         if [ $? -ne 0 ]; then
-            error_exit "Image verification failed!"
+            error_exit "Image verification failed!"  # Exit if verification fails
         fi
     fi
-    log "Arch Linux image downloaded and verified."
+    log "Arch Linux image downloaded and verified."  # Log successful download and verification
 }
 
 # Function to create Nginx config
 create_nginx_config() {
-    if [ ! -f "$HOST_NGINX_CONF" ]; then
-        log "Creating default Nginx config..."
-        cat <<EOF > "$HOST_NGINX_CONF"
+    if [ ! -f "$HOST_NGINX_CONF" ]; then  # Check if Nginx config already exists
+        log "Creating default Nginx config..."  # Log Nginx config creation
+        cat <<EOF > "$HOST_NGINX_CONF"  # Create Nginx configuration file
 user nginx;
 worker_processes auto;
 error_log /var/log/nginx/error.log warn;
@@ -142,45 +146,45 @@ http {
     }
 }
 EOF
-        sudo chmod 644 "$HOST_NGINX_CONF"
-        log "Nginx config created."
+        sudo chmod 644 "$HOST_NGINX_CONF"  # Set permissions
+        log "Nginx config created."  # Log successful Nginx config creation
     fi
 }
 
 # Function to create container config
 create_container_config() {
-    cat << EOF > "$BUNDLE_DIR/config.json"
+    cat << EOF > "$BUNDLE_DIR/config.json"  # Create container configuration
 {
     "ociVersion": "1.0.2",
     "process": {
-        "user": {"uid": 1000, "gid": 1000},
-        "args": ["/usr/bin/nginx", "-g", "daemon off;"],
-        "env": ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C.UTF-8"],
+        "user": {"uid": 1000, "gid": 1000},  # User configuration
+        "args": ["/usr/bin/nginx", "-g", "daemon off;"],  # Command to run container
+        "env": ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "LANG=C.UTF-8"],  # Environment variables
         "cwd": "/",
         "capabilities": {
-            "bounding": ["CAP_CHOWN", "CAP_NET_BIND_SERVICE"],
+            "bounding": ["CAP_CHOWN", "CAP_NET_BIND_SERVICE"],  # Supported capabilities
             "effective": ["CAP_CHOWN", "CAP_NET_BIND_SERVICE"]
         },
-        "rlimits": [{"type": "RLIMIT_NOFILE", "hard": 1024, "soft": 1024}],
-        "terminal": false
+        "rlimits": [{"type": "RLIMIT_NOFILE", "hard": 1024, "soft": 1024}],  # Resource limits
+        "terminal": false  # Disable terminal
     },
-    "root": {"path": "rootfs", "readonly": false},
-    "hostname": "arch-container",
+    "root": {"path": "rootfs", "readonly": false},  # Root filesystem configuration
+    "hostname": "arch-container",  # Container hostname
     "linux": {
-        "namespaces": [
+        "namespaces": [  # Namespaces used by the container
             {"type": "pid"},
             {"type": "mount"},
             {"type": "network", "path": "/var/run/netns/$NETNS_NAME"}
         ],
-        "resources": {
+        "resources": {  # Resource limits for the container
             "memory": {"limit": 512000000, "swap": 0},
             "cpu": {"shares": 1024, "quota": 100000, "period": 100000},
             "pids": {"limit": 100}
         },
-        "seccomp": {
+        "seccomp": {  # Security configuration using seccomp
             "defaultAction": "SCMP_ACT_ERRNO",
             "architectures": ["SCMP_ARCH_X86_64"],
-            "syscalls": [
+            "syscalls": [  # Allowed syscalls
                 {
                     "names": [
                         "accept4", "bind", "clone", "close", "connect", "epoll_create1", "epoll_ctl", "epoll_wait",
@@ -194,7 +198,7 @@ create_container_config() {
             ]
         }
     },
-    "mounts": [
+    "mounts": [  # Volumes and bind mounts for the container
         {"destination": "/proc", "type": "proc", "source": "proc"},
         {"destination": "/dev", "type": "tmpfs", "source": "tmpfs", "options": ["nosuid", "strictatime", "mode=755", "size=65536k"]},
         {"destination": "/dev/pts", "type": "devpts", "source": "devpts", "options": ["nosuid", "noexec", "newinstance", "ptmxmode=0666", "mode=0620"]},
@@ -204,58 +208,48 @@ create_container_config() {
     ]
 }
 EOF
-    log "Container config created."
+    log "Container config created."  # Log container configuration creation
 }
-
 
 # Function to set up networking
 setup_networking() {
-    log "Setting up network..."
-
-    # Ensure bridge br0 is up
-    if ! ip link show "$BRIDGE_NAME" &>/dev/null; then
-        log "Bridge $BRIDGE_NAME does not exist. Please bring it up using ifup."
-        error_exit "Bridge $BRIDGE_NAME not found."
-    else
-        log "Using existing bridge $BRIDGE_NAME"
-    fi
+    log "Setting up network..."  # Log network setup
 
     # Create network namespace if it doesn't exist
     if ! sudo ip netns list | grep -qw "$NETNS_NAME"; then
-        log "Creating network namespace $NETNS_NAME..."
+        log "Creating network namespace $NETNS_NAME..."  # Log network namespace creation
         sudo ip netns add "$NETNS_NAME"
     fi
 
     # Create veth pair if they don't exist
-    if ! ip link show veth0 &>/dev/null && ! ip link show veth1 &>/dev/null; then
-        log "Creating veth pair..."
+    if ! ip link show veth1 &>/dev/null; then
+        log "Creating veth pair..."  # Log veth pair creation
         sudo ip link add veth0 type veth peer name veth1
         sudo ip link set veth0 netns "$NETNS_NAME"
         sudo ip link set veth1 master "$BRIDGE_NAME"
-        sudo ip netns exec "$NETNS_NAME" ip addr add "$CONTAINER_IP" dev veth0
-        sudo ip netns exec "$NETNS_NAME" ip link set veth0 up
-        sudo ip link set veth1 up
     fi
+    sudo ip netns exec "$NETNS_NAME" ip addr add "$CONTAINER_IP" dev veth0  # Assign IP to container's veth interface
+    sudo ip netns exec "$NETNS_NAME" ip link set veth0 up  # Bring up container's veth interface
 }
 
 # Function to start the container
 start_container() {
-    log "Starting container $IMAGE_ID..."
-    sudo ip netns exec "$NETNS_NAME" crun --runtime-flag=no-pivot -b "$BUNDLE_DIR" -n "$IMAGE_ID" start
+    log "Starting container $IMAGE_ID..."  # Log container startup
+    sudo ip netns exec "$NETNS_NAME" crun --runtime-flag=no-pivot -b "$BUNDLE_DIR" -n "$IMAGE_ID" start  # Start the container using crun
 }
 
 # Main function
 main() {
-    check_dependencies
-    create_directories
-    download_verify_image
-    create_nginx_config
-    create_container_config
-    setup_networking
-    start_container
+    check_dependencies  # Check for required dependencies
+    create_directories  # Create necessary directories
+    download_verify_image  # Download and verify the Arch Linux image
+    create_nginx_config  # Create Nginx configuration
+    create_container_config  # Create container configuration
+    setup_networking  # Set up networking for the container
+    start_container  # Start the container
 
-    log "Container started with port forwarding from host $HOST_PORT to container $CONTAINER_PORT."
+    log "Container started with port forwarding from host $HOST_PORT to container $CONTAINER_PORT."  # Log successful container start
 }
 
 # Run main function
-main
+main  # Execute the main function
