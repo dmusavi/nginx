@@ -121,8 +121,17 @@ download_verify_image() {
 }
 
 # Function to create Nginx config
-create_nginx_config() 
 
+# Function to create container config
+create_container_config() {
+    if [ ! -d "$BUNDLE_DIR" ]; then
+        log "Error: Directory $BUNDLE_DIR does not exist."
+        error_exit "Directory for config.json does not exist."
+    fi
+    if ! cat << EOF > "$BUNDLE_DIR/config.json"; then
+        log "Error: Failed to write config.json to $BUNDLE_DIR"
+        error_exit "Could not create config.json"
+    fi
 {
     "ociVersion": "1.0.2",
     "process": {
@@ -178,14 +187,10 @@ create_nginx_config()
         {"destination": "/sys", "type": "sysfs", "source": "sysfs", "options": ["nosuid", "noexec", "nodev", "ro"]},
         {"destination": "/etc/nginx/nginx.conf", "source": "$HOST_NGINX_CONF", "type": "bind", "options": ["ro", "rbind"]},
         {"destination": "/usr/share/nginx/html", "source": "$HOST_MEDIA_DIR", "type": "bind", "options": ["ro", "rbind"]}
-        // Removed bind mounts for /lib and /usr/lib if not needed
     ]
 }
-
 EOF
-        sudo chmod 644 "$HOST_NGINX_CONF"  # Set permissions
-        log "Nginx config created."  # Log successful Nginx config creation
-    fi
+    log "Container config created."
 }
 
 # Function to create container config
