@@ -1,59 +1,56 @@
-SWIG-4.2.1
-Introduction to SWIG
-SWIG (Simplified Wrapper and Interface Generator) is a compiler that integrates C and C++ with languages including Perl, Python, Tcl, Ruby, PHP, Java, JavaScript, C#, D, Go, Lua, Octave, R, Racket, Scilab, Scheme, and Ocaml. SWIG can also export its parse tree into Lisp s-expressions and XML.
+#!/bin/bash
 
-SWIG reads annotated C/C++ header files and creates wrapper code (glue code) in order to make the corresponding C/C++ libraries available to the listed languages, or to extend C/C++ programs with a scripting language.
+# Variables
+PACKAGE_NAME="swig"
+PACKAGE_VERSION="4.2.1"
+PACKAGE_TARBALL="${PACKAGE_NAME}-${PACKAGE_VERSION}.tar.gz"
+PACKAGE_URL="https://downloads.sourceforge.net/${PACKAGE_NAME}/${PACKAGE_TARBALL}"
+PACKAGE_MD5="7697b443d7845381d64c90ab54d244af"
+BUILD_DIR="."
+INSTALL_DIR="/usr"
+CURRENT_USER=$(whoami)
 
-This package is known to build and work properly using an LFS 12.2 platform.
+# Step 1: Download
+echo "Downloading ${PACKAGE_NAME}-${PACKAGE_VERSION}..."
+wget -O "${PACKAGE_TARBALL}" "${PACKAGE_URL}"
 
-Package Information
-Download (HTTP): https://downloads.sourceforge.net/swig/swig-4.2.1.tar.gz
+# Step 2: Verify MD5 checksum
+echo "Verifying MD5 checksum..."
+echo "${PACKAGE_MD5}  ${PACKAGE_TARBALL}" | md5sum -c -
 
-Download MD5 sum: 7697b443d7845381d64c90ab54d244af
+# Step 3: Remove write protection and change ownership
+echo "Removing write protection and setting ownership..."
+sudo chmod -R u+w "${BUILD_DIR}/${PACKAGE_TARBALL}"
+sudo chown -R ${CURRENT_USER}:${CURRENT_USER} "${BUILD_DIR}/${PACKAGE_TARBALL}"
 
-Download size: 8.0 MB
+# Step 4: Extract
+echo "Extracting ${PACKAGE_TARBALL}..."
+tar -xzf "${PACKAGE_TARBALL}"
 
-Estimated disk space required: 81 MB (1.8 GB with tests)
+# Step 5: Enter Source Directory
+cd "${PACKAGE_NAME}-${PACKAGE_VERSION}"
 
-Estimated build time: 0.1 SBU (add 7.7 SBU for tests; both using parallelism=4)
+# Step 6: Configure
+echo "Configuring ${PACKAGE_NAME}-${PACKAGE_VERSION}..."
+./configure --prefix=${INSTALL_DIR} \
+            --without-javascript \
+            --without-maximum-compile-warnings
 
-SWIG Dependencies
-Required
-pcre2-10.44
+# Step 7: Build
+echo "Building ${PACKAGE_NAME}-${PACKAGE_VERSION}..."
+make -j12
 
-Optional
-Boost-1.86.0 for tests, and any of the languages mentioned in the introduction, as run-time dependencies
+# Step 8: Test
+echo "Testing ${PACKAGE_NAME}-${PACKAGE_VERSION}..."
+PY3=1 make -j12 TCL_INCLUDE= -k check
 
-Installation of SWIG
-Install SWIG by running the following commands:
+# Step 9: Install
+echo "Installing ${PACKAGE_NAME}-${PACKAGE_VERSION}..."
+sudo make install
 
-./configure --prefix=/usr                      \
-            --without-javascript               \
-            --without-maximum-compile-warnings &&
-make
-To test the results, issue: PY3=1 make TCL_INCLUDE= -k check. The unsetting of the variable TCL_INCLUDE is necessary since it is not correctly set by configure. The tests are only executed for the languages installed on your machine, so the disk space and SBU values given for the tests may vary, and should be considered as mere orders of magnitude. According to SWIG's documentation, the failure of some tests should not be considered harmful. The go tests are buggy and may generate a lot of meaningless output.
+# Step 10: Clean Up
+echo "Cleaning up..."
+cd ..
+rm -rf "${PACKAGE_NAME}-${PACKAGE_VERSION}"
 
-Now, as the root user:
-
-make install &&
-cp -v -R Doc -T /usr/share/doc/swig-4.2.1
-Command Explanations
---without-maximum-compile-warnings: disables compiler ansi conformance enforcement, which triggers errors in the Lua headers (starting with Lua 5.3).
-
---without-<language>: allows disabling the building of tests and examples for <language>, but all the languages capabilities of SWIG are always built. This switch is used for JavaScript because the SWIG implementation is incomplete and a lot of tests fail due to API changes in Node-20.
-
-Contents
-Installed Programs:
-swig and ccache-swig
-Installed Library:
-None
-Installed Directories:
-/usr/share/doc/swig-4.2.1 and /usr/share/swig
-Short Descriptions
-swig
-
-takes an interface file containing C/C++ declarations and SWIG special instructions, and generates the corresponding wrapper code needed to build extension modules
-
-ccache-swig
-
-is a compiler cache, which speeds up re-compilation of C/C++/SWIG code
+echo "${PACKAGE_NAME}-${PACKAGE_VERSION} installation complete."
