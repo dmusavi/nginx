@@ -40,15 +40,26 @@ make PYTHONS=
 
 # Step 8: Test
 echo "Testing ${PACKAGE_NAME}-${PACKAGE_VERSION}..."
-make -k check PYTHONS=
+if swig -version > /dev/null; then
+  python3 -m venv testenv &&
+  testenv/bin/pip3 install --no-index --find-links=dist --no-cache-dir gpg &&
+  sed '/PYTHON/s#run-tests.py#& --python-libdir=/dev/null#' -i lang/python/tests/Makefile
+fi
+make -k check PYTHONS= PYTHON=$PWD/testenv/bin/python3
 
 # Step 9: Install
 echo "Installing ${PACKAGE_NAME}-${PACKAGE_VERSION}..."
 sudo make install PYTHONS=
 
-# Step 10: Clean Up
+# Step 10: Install Python 3 Binding (if SWIG is available)
+if swig -version > /dev/null; then
+  pip3 install --no-index --find-links=dist --no-cache-dir --no-user gpg
+fi
+
+# Step 11: Clean Up
 echo "Cleaning up..."
 cd ..
 rm -rf "${PACKAGE_NAME}-${PACKAGE_VERSION}"
 
 echo "${PACKAGE_NAME}-${PACKAGE_VERSION} installation complete."
+
