@@ -41,11 +41,10 @@ cd build &&
 
 # Step 7: Build
 echo "Building ${PACKAGE_NAME}-${PACKAGE_VERSION}..."
-make -j12
-
+make 
 # Step 8: Test
 echo "Testing ${PACKAGE_NAME}-${PACKAGE_VERSION}..."
-make check
+make -j12 check
 
 # Step 9: Install
 echo "Installing ${PACKAGE_NAME}-${PACKAGE_VERSION}..."
